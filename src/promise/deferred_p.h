@@ -2,23 +2,28 @@
 #define __COROUTINE_DEFERRED_P_H__
 #pragma once
 
-#include "boost/logic/tribool.hpp"
-#include "boost/function.hpp"
-#include <QVariant>
-#include "global.h"
+#include <boost/enable_shared_from_this.hpp>
+#include <boost/function.hpp>
+#include <boost/bind.hpp>
+#include <boost/any.hpp>
 
-using boost::logic::tribool;
-BOOST_TRIBOOL_THIRD_STATE(maybe)
+#include "../global.h"
+#include "deferred_base.h"
 
+
+//warn myself and all who wanna modify this file:
 //PREMATURE OPTIMIZATION IS ROOT OF ALL EVILS
 //													--by D. E. Knuth
 
-class DeferredData
+class DeferredContextInterface;
+
+class DW_COROUTINE_EXPORT DeferredData
+  : public boost::enable_shared_from_this<DeferredData>
 {
 	public:
-		static DeferredData shared_indeterminate_deferred;
-		static DeferredData shared_true_deferred;
-		static DeferredData shared_false_deferred;
+		static DeferredDataPtr shared_indeterminate_deferred;
+		static DeferredDataPtr shared_true_deferred;
+		static DeferredDataPtr shared_false_deferred;
 
 		//poor guy's single link list
 		template<typename Fn_>
@@ -72,6 +77,16 @@ class DeferredData
 					n = t;
 				}
 			}
+
+			void clear()
+			{
+				CallbackNode *n = this;
+				while(n) {
+					CallbackNode *t = n->next;
+					delete n;
+					n = t;
+				}
+			}
 		};
 
 	public:
@@ -81,22 +96,16 @@ class DeferredData
 		typedef CallbackNode<promise_callback_type> callback_node_type;
 		typedef CallbackNode<promise_always_type> always_node_type;
 
-		typedef void (*cancel_routine)(void*);
-
 
 		DeferredData();
 		explicit DeferredData(tribool s);
-		virtual ~DeferredData() {}
-
-		//XXX:maybe we shall add AtomicOps here to make DeferredData much more widely usable?
-		void AddRef() { ++m_refcount;}
-		void Release() { if(--m_refcount == 0) delete this;}
+		explicit DeferredData(DeferredContextInterface *ctx);
+		virtual ~DeferredData();
 
 		void resolve();
 		void reject();
 		void cancel();
-
-		void detach();
+		tribool reset();
 
 		size_t done(const promise_callback_type &func);
 		size_t fail(const promise_callback_type &func);
@@ -106,36 +115,37 @@ class DeferredData
 		void removeFail(size_t handle);
 		void removeAlways(size_t handle);
 
-		const QVariant& result();
+		DeferredContextInterface* context();
+		void setContext(DeferredContextInterface *ctx);
 
-		template<typename Ty_>
-		void setResult(const Ty_ &val)
-		{
-			m_result.setValue(val);
-		}
+		void setOwnContext(bool owned);
+		bool ownContext();
 
-		void* context();
-		void setContext(void *ctx, cancel_routine cancel);
+		void setResult(const boost::any &r);
+		const boost::any& result();
 
 
 		//XXX:do we need this?
 		//void notify(const promise_notify_type&);
 
+		void resetState(tribool s);
+		tribool state();
+
 		bool isRejected();
 		bool isResolved();
 
-		tribool state() { return m_state; }
-
+		bool isActivating();
 
 	protected:
 		tribool															m_state;
+		bool																m_activating;
+		bool																m_ownContext;
 		int																	m_refcount;
-		QVariant														m_result;
-		void																*m_context;
+		boost::any													m_result;
 
+		DeferredContextInterface						*m_context;
 		callback_node_type									*m_done;
 		callback_node_type									*m_fail;
 		always_node_type										*m_always;
-		cancel_routine											m_cancel;
 };
 #endif //__COROUTINE_DEFERRED_P_H__

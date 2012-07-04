@@ -4,88 +4,180 @@
 
 #include "deferred.h"
 #include "deferred_p.h"
+#include "deferred_base.h"
 #include "deferred_ops.h"
 
 
-class DeferredData;
+class QObject;
+
+template<typename Ty_>
+struct is_void_type
+{
+  enum {
+    value = 0
+  };
+};
+
+template<>
+struct is_void_type<void>
+{
+  enum {
+    value = 1
+  };
+};
 
 template<typename Ty_ = void>
 class Promise
+	: public DeferredBase
 {
 	public:
-		typedef boost::function<void()> promise_callback_type;
-		typedef boost::function<void(tribool)> promise_always_type;
 
 		Promise();
-		explicit Promise(DeferredData *d);
+		Promise(bool s);
+		explicit Promise(DeferredDataPtr d);
+		Promise(const Deferred<Ty_> &d);
 		Promise(const Promise &rhs);
-		~Promise();
 
-		void cancel();
+    template<typename Other_>
+		Promise(const Promise<Other_> &rhs)
+      : DeferredBase(rhs)
+    {
+      STATIC_ASSERT(is_void_type<Other_>::value);
+    }
 
-		size_t done(const promise_callback_type &func);
-		size_t fail(const promise_callback_type &func);
-		size_t always(const promise_always_type &func);
-
-		void removeDone(size_t handle);
-		void removeFail(size_t handle);
-		void removeAlways(size_t handle);
+		tribool reset();
 
 		Ty_ result();
 
-
-		bool isRejected();
-		bool isResolved();
-
-		tribool state();
-
 		Promise& operator=(const Promise& rhs)
 		{
-			if(rhs.d_ptr == this->d_ptr) {
-				return *this;
-			}
-			if(this->d_ptr) {
-				d_ptr->Release();
-			}
-			d_ptr = rhs.d_ptr;
-			if(d_ptr) {
-				d_ptr->AddRef();
-			}
+      this->assign(rhs);
 			return *this;
 		}
 
 	template<typename T_, typename U_>
-	friend Promise<void> operator|| (Promise<T_> &lhs, Promise<U_> &rhs);
+	friend Promise<void> operator|| (const Promise<T_> &lhs, const Promise<U_> &rhs);
 
 	template<typename T_, typename U_>
-	friend Promise<void> operator&& (Promise<T_> &lhs, Promise<U_> &rhs);
+	friend Promise<void> operator&& (const Promise<T_> &lhs, const Promise<U_> &rhs);
 
 	template<typename T_>
-	friend Promise<void> operator! (Promise<T_> &in);
+	friend Promise<void> operator! (const Promise<T_> &in);
 
-	private:
-		DeferredData *d_ptr;
 };
 
-template<typename T_, typename U_>
-Promise<void> operator||(Promise<T_> &lhs, Promise<U_> &rhs)
+
+template<typename ResultType_ = void>
+class AutoCancelPromise
+	: public Promise<ResultType_>
 {
-	return Promise<void>(new OrOpDeferredData(lhs.d_ptr, rhs.d_ptr));
+public:
+	AutoCancelPromise()
+		: Promise<ResultType_>(), dismissed_(false)
+	{
+	}
+
+	AutoCancelPromise(const Promise<ResultType_> &rhs)
+		: Promise<ResultType_>(rhs), dismissed_(false)
+	{
+	}
+
+	~AutoCancelPromise()
+	{
+		if(!dismissed_) {
+			this->cancel();
+		}
+	}
+
+	void dismiss() {dismissed_ = true;}
+
+	AutoCancelPromise& operator=(const Promise<ResultType_>& rhs)
+	{
+		this->cancel();
+		*(Promise<ResultType_>*)this = rhs;
+		this->dismissed_ = false;
+		return *this;
+	}
+
+	AutoCancelPromise& operator=(const AutoCancelPromise& rhs)
+	{
+		this->cancel();
+		*(Promise<ResultType_>*)this = rhs;
+		this->dismissed_ = rhs.dismissed_;
+		rhs.dismiss();
+		return *this;
+	}
+
+private:
+
+	bool dismissed_;
+};
+
+
+template<typename T_, typename U_>
+Promise<void> operator||(const Promise<T_> &lhs, const Promise<U_> &rhs)
+{
+	return Promise<void>(promiseOr(lhs.d_ptr, rhs.d_ptr));
 }
 
 template<typename T_, typename U_>
-Promise<void> operator&&(Promise<T_> &lhs, Promise<U_> &rhs)
+Promise<void> operator&&(const Promise<T_> &lhs, const Promise<U_> &rhs)
 {
-	return Promise<void>(new AndOpDeferredData(lhs.d_ptr, rhs.d_ptr));
+	return Promise<void>(promiseAnd(lhs.d_ptr, rhs.d_ptr));
 }
 
 template<typename T_>
-Promise<void> operator!(Promise<T_> &in)
+Promise<void> operator!(const Promise<T_> &in)
 {
-	return Promise<void>(new NotOpDeferredData(in.d_ptr));
+	return Promise<void>(promiseNot(in.d_ptr));
 }
 
-//XXX:implement following shxt while I've clear mind
+template<typename T_, typename U_>
+Promise<void> operator||(const Deferred<T_> &lhs, const Promise<U_> &rhs)
+{
+	return Promise<T_>(lhs) || rhs;
+}
+
+template<typename T_, typename U_>
+Promise<void> operator&&(const Deferred<T_> &lhs, const Promise<U_> &rhs)
+{
+	return Promise<T_>(lhs) && rhs;
+}
+
+template<typename T_>
+Promise<void> operator!(const Deferred<T_> &in)
+{
+	return !Promise<T_>(in);
+}
+
+template<typename T_, typename U_>
+Promise<void> operator||(const Promise<T_> &lhs, const Deferred<U_> &rhs)
+{
+	return lhs || Promise<U_>(rhs);
+}
+
+template<typename T_, typename U_>
+Promise<void> operator&&(const Promise<T_> &lhs, const Deferred<U_> &rhs)
+{
+	return lhs && Promise<U_>(rhs);
+}
+
+template<typename T_, typename U_>
+Promise<void> operator||(const Deferred<T_> &lhs, const Deferred<U_> &rhs)
+{
+	return Promise<T_>(lhs) || Promise<U_>(rhs);
+}
+
+template<typename T_, typename U_>
+Promise<void> operator&&(const Deferred<T_> &lhs, const Deferred<U_> &rhs)
+{
+	return Promise<T_>(lhs) && Promise<U_>(rhs);
+}
+
+
+//XXX:implement following shxt while I've higher sane value
+//I hope Cthulhu can leave me alone...
+//
 //revert from determinate state into indeterminate state break
 //the resolve/reject once rule...
 template<typename T_>

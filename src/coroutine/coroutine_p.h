@@ -3,28 +3,35 @@
 
 #pragma once
 
-#include <windows.h>
+#include "../global.h"
+
 #include <exception>
-#include "boost/bind.hpp"
-#include "boost/function.hpp"
-#include "global.h"
-#include "deferred.h"
+#include <boost/bind.hpp>
+#include <boost/function.hpp>
+#include <boost/shared_ptr.hpp>
+#include <boost/enable_shared_from_this.hpp>
+
+#include "promise/promise.h"
+#include "promise/deferred.h"
+#include "promise/deferred_context.h"
+#include "coroutine/coroutine.h"
 
 
-#ifndef CACHED_FIBERS_LIMIT
-#define CACHED_FIBERS_LIMIT 16
-#endif //CACHED_FIBERS_LIMIT
+#ifndef CACHED_COROUTINE_LIMIT
+#define CACHED_COROUTINE_LIMIT 16
+#endif //CACHED_COROUTINE_LIMIT
 
-class CancelAsyncException : public std::exception
-{
-};
+#ifndef CALLBACK
+#define CALLBACK
+#endif
 
-typedef boost::function<void()> coroutine_proc_type;
-class CoroutineData;
-typedef comptr<CoroutineData> CoroutineDataPtr;
+#define THREAD_AFFINITY_CHECK() ASSERT(this->threadId() == GetCurrentThreadId())
+
 
 //internal coroutine data
-class CoroutineData
+class DW_COROUTINE_EXPORT CoroutineData
+	: public DeferredContext<void>,
+    public boost::enable_shared_from_this<CoroutineData>
 {
 	friend class Coroutine;
 	friend class CoroutineManager;
@@ -32,56 +39,59 @@ class CoroutineData
 	public:
 		CoroutineData(const coroutine_proc_type &func);
 		~CoroutineData();
-		//we have thread affinity, and won't run in other thread
-		//so, interlockXXX is not neccessary
-		void AddRef() { ++m_refcount;}
-		void Release() { if(--m_refcount == 0) delete this;}
 
 		bool isActive() { return NULL != m_next; }
 		bool isCancelled() { return m_cancelled; }
-		Promise<> promise() { return m_deferred.promise(); }
 
-		static void cancel_me(void* ctx);
+		virtual void cancel_me();
 
 	private:
 		//don't call me directly
 		void run();
 
-		int											m_refcount;
-		DWORD										m_threadId;
+    ThreadId threadId() { return m_threadId; }
+
+		ThreadId								m_threadId;
 		coroutine_proc_type			m_func;
-		LPVOID									m_fiber;
-		Deferred<>							m_deferred;
+		FiberType								m_fiber;
 		bool										m_cancelled;
 
 		CoroutineDataPtr				m_next;
 };
 
 
-class CoroutineManager
+class DW_COROUTINE_EXPORT CoroutineManager
 {
 	public:
 		CoroutineManager();
 
 		CoroutineDataPtr top() {return m_stack;}
-		void schedule(CoroutineData *co);
-		void yield(CoroutineData *co);
+		void schedule(CoroutineDataPtr co);
+		void yield(CoroutineDataPtr co);
 
 		static CoroutineManager& getInstance();
-		static VOID CALLBACK FiberProc(PVOID unused);
+#ifdef WIN32
+		static void CALLBACK FiberProc(void *unused);
+#endif
+#ifdef POSIX
+		static void FiberProc();
+#endif
 
 	protected:
 		void pop();
 		void push(CoroutineDataPtr c);
-		LPVOID allocateFiber();
-		void freeFiber(LPVOID f);
+		FiberType allocateFiber();
+		void freeFiber(FiberType f);
 
 	private:
 		CoroutineDataPtr				m_main;
 		CoroutineDataPtr				m_stack;
-		LPVOID									m_freeFiberList[CACHED_FIBERS_LIMIT];
+		FiberType								m_freeFiberList[CACHED_COROUTINE_LIMIT];
 		int											m_recursiveDepth;
 		int											m_freeFiberCount;
+#ifdef POSIX
+    size_t                  m_stackSize;
+#endif
 };
 
 #endif //__COROUTINE_COROUTINE_P_H__
