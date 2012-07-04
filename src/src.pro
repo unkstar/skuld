@@ -7,8 +7,8 @@ include($$ROOT_DIR/include/common.pro)
 
 win32{
 
-QMAKE_LFLAGS_DEBUG += /IMPLIB:../lib/$$(TARGET)d.lib
-QMAKE_LFLAGS_RELEASE += /IMPLIB:../lib/$$(TARGET).lib
+QMAKE_LFLAGS_DEBUG += /IMPLIB:../lib/$${TARGET}d.lib
+QMAKE_LFLAGS_RELEASE += /IMPLIB:../lib/$${TARGET}.lib
 
 SOURCES += coroutine/coroutine_win32.cpp
 SOURCES += async/async_jobpool_win32.cpp

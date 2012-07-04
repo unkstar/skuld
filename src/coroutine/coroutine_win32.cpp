@@ -7,11 +7,10 @@ static void* dummy()
 }
 
 CoroutineManager::CoroutineManager()
-	:m_recursiveDepth(0), m_freeFiberCount(0)
+	:m_recursiveDepth(0), m_freeFiberCount(0), m_main(new CoroutineData(dummy))
 {
 	memset(m_freeFiberList, 0, CACHED_COROUTINE_LIMIT * sizeof(FiberType));
 
-	this->m_main = new CoroutineData(dummy);
 	//TODO:is floating point state switching really needed?
 	this->m_main->m_fiber = ConvertThreadToFiberEx(NULL, FIBER_FLAG_FLOAT_SWITCH);
 	this->push(m_main);

@@ -35,7 +35,7 @@ void CALLBACK ComputationalJob::CompleteRoutine(ULONG_PTR  ctx)
 {
 	ComputationalJob *j = (ComputationalJob*)ctx;
 	if(!j->m_cancelled) {
-		j->resolve();
+		j->resolve(j->m_task);
 	}
 	delete j;
 }

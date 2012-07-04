@@ -1,3 +1,4 @@
+#include "global.h"
 #include "misc/sync.h"
 #include <windows.h>
 

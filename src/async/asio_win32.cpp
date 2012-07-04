@@ -130,7 +130,7 @@ class CompleteData
 void IOEvent::run()
 {
   if(0 == comp->dwErrorCode || ERROR_HANDLE_EOF == comp->dwErrorCode) {
-    comp->resolve();
+	comp->resolve(comp->dwNumberOfBytesTransfered);
   } else {
     comp->reject();
   }

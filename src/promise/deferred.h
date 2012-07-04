@@ -31,7 +31,7 @@ class Deferred
 };
 
 template<>
-class Deferred<void>
+class DW_COROUTINE_EXPORT Deferred<void>
 	: public DeferredBase
 {
   public:

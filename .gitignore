@@ -27,3 +27,7 @@ Makefile.Release
 
 bin/
 tmp/
+ipch/
+lib/
+*.opensdf
+*.sdf
