@@ -31,3 +31,4 @@ ipch/
 lib/
 *.opensdf
 *.sdf
+3party/boost

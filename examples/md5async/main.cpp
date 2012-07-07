@@ -158,7 +158,7 @@ class MainWindow
 				}
 				reading = readAsync(hFile, readingBuffer, BUFFER_SIZE, offset);
 				if(bytesReaded) {
-					//md5_append(&context, (const md5_byte_t *)calculatingBuffer, bytesReaded);
+					//md5_append(context.get(), (const md5_byte_t *)calculatingBuffer.get(), bytesReaded);
 					calculating = calculateAsync(new md5task(context, (const md5_byte_t *)calculatingBuffer.get(), bytesReaded));
 				}
 				Promise<> timeout = setTimeout(kTimeoutDue);
