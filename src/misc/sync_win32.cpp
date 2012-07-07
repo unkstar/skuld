@@ -1,48 +1,44 @@
 #include "global.h"
-#include "misc/sync.h"
-#include <windows.h>
 
 Mutex::Mutex()
 {
-	InitializeCriticalSection(&crit_sec_);
+	InitializeCriticalSection(&mutex_);
 }
 
 Mutex::~Mutex()
 {
-	DeleteCriticalSection(&crit_sec_);
+	DeleteCriticalSection(&mutex_);
 }
 
 void Mutex::Lock()
 {
-	::EnterCriticalSection(&crit_sec_);
+	::EnterCriticalSection(&mutex_);
 }
 
 void Mutex::Unlock()
 {
-	::LeaveCriticalSection(&crit_sec_);
+	::LeaveCriticalSection(&mutex_);
 }
 
-Semaphore::Semaphore(long initialCount /* = 0 */, long maxCount /* = std::numeric_limits<long>::max()*/)
-	: m_handle(NULL)
+Semaphore::Semaphore(long initialCount /* = 0 */)
+	: sem_(NULL)
 {
- m_handle = ::CreateSemaphore(NULL, initialCount, maxCount, NULL);
+ sem_ = ::CreateSemaphore(NULL, initialCount, std::numeric_limits<long>::max(), NULL);
 }
 
 Semaphore::~Semaphore()
 {
-	::CloseHandle(m_handle);
+	::CloseHandle(sem_);
 }
 
-long Semaphore::release()
+void Semaphore::release()
 {
-	LONG prev = -1;
-	::ReleaseSemaphore(m_handle, 1, &prev);
-	return prev;
+	::ReleaseSemaphore(sem_, 1, NULL);
 }
 
-bool Semaphore::acquire(/* int n = 1 */)
+bool Semaphore::acquire()
 {
-	DWORD ret = ::WaitForSingleObject(m_handle, INFINITE);
+	DWORD ret = ::WaitForSingleObject(sem_, INFINITE);
 	if(WAIT_OBJECT_0 == ret || WAIT_ABANDONED == ret) {
 		return true;
 	}

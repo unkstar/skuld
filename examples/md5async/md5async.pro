@@ -7,17 +7,18 @@ include($$ROOT_DIR/include/common.pro)
 
 win32 {
   CONFIG(debug, debug|release) {
-      LIBS += coroutined.lib
+      LIBS += skuldd.lib
   }
 
   CONFIG(release, debug|release) {
-      LIBS += coroutine.lib
+      LIBS += skuld.lib
   }
 }
 
+
+
 unix {
-  LIBS += -lcoroutine
-  #QMAKE_LFLAGS += -lcoroutine
+  LIBS += -lskuld
   QMAKE_CXXFLAGS  += -g
 }
 

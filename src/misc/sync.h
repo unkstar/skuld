@@ -14,7 +14,7 @@ class DW_COROUTINE_EXPORT Mutex
 		void Unlock();
 
 	private:
-		CRITICAL_SECTION crit_sec_;
+		SYS_MUTEX_T mutex_;
 };
 
 class DW_COROUTINE_EXPORT MutexLock
@@ -30,13 +30,13 @@ class DW_COROUTINE_EXPORT MutexLock
 class DW_COROUTINE_EXPORT Semaphore
 {
 	public:
-		explicit Semaphore(long initialCount = 0, long maxCount = std::numeric_limits<long>::max());
+		explicit Semaphore(long initialCount = 0);
 		~Semaphore();
-		long release();
-		bool acquire(/* int n = 1 */);
+		void release();
+		bool acquire();
 
 	private:
-		HANDLE m_handle;
+		SYS_SEM_T sem_;
 };
 
 #else //USE_QT_INFRASTRUCTURES

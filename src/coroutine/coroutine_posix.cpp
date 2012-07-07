@@ -1,6 +1,13 @@
 #include "coroutine.h"
 #include "coroutine_p.h"
 
+#include <errno.h>
+#include <unistd.h>
+#include <stdio.h>
+
+# define AllocateFiber(s) (fiber_t*)mmap(0, sizeof(fiber_t) + s, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0)
+# define FreeFiber(p, s) munmap(p, s + sizeof(fiber_t))
+
 static void* dummy()
 {
 	return 0;
@@ -59,6 +66,9 @@ FiberType CoroutineManager::allocateFiber()
 		m_freeFiberList[m_freeFiberCount] = NULL;
 	} else {
 		fiber = AllocateFiber(m_stackSize);
+    if(MAP_FAILED == fiber) {
+      printf("%s:(%d)", strerror(errno), (int)errno);
+    }
 	}
   getcontext(&fiber->context);
   fiber->context.uc_stack.ss_sp = fiber->stack;
@@ -74,7 +84,7 @@ void CoroutineManager::freeFiber(FiberType fiber)
 		m_freeFiberList[m_freeFiberCount++] = fiber;
 	} else {
 		//we delete the last cached one, because if we delete current one, currently activated stack will corrupt
-		free(m_freeFiberList[CACHED_COROUTINE_LIMIT - 1]);
+		FreeFiber(m_freeFiberList[CACHED_COROUTINE_LIMIT - 1], m_stackSize);
 		m_freeFiberList[CACHED_COROUTINE_LIMIT - 1] = fiber;
 	}
 }

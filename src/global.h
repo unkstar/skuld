@@ -39,6 +39,9 @@
 # include <windows.h>
   typedef unsigned int ThreadId;
   typedef LPVOID FiberType;
+  typedef CRITICAL_SECTION SYS_MUTEX_T;
+  typedef HANDLE  SYS_SEM_T;
+
 #elif defined(__linux__) || defined(__APPLE__)
 
 #ifndef _XOPEN_SOURCE
@@ -46,20 +49,23 @@
 #endif
 
 # include <pthread.h>
+# include <semaphore.h>
 # include <ucontext.h>
+# include <sys/mman.h>
   typedef pthread_t ThreadId;
   struct fiber_t {
     ucontext_t  context;
     char        stack[1];
   };
   typedef fiber_t* FiberType;
-# define AllocateFiber(s) (fiber_t*)malloc(sizeof(fiber_t) + s)
+
+  typedef pthread_mutex_t SYS_MUTEX_T;
+  typedef sem_t SYS_SEM_T;
 
 # ifndef POSIX
 #   define POSIX
 # endif
 
-# define USE_QT_INFRASTRUCTURES
 
 # define GetCurrentThreadId() pthread_self()
 

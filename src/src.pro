@@ -1,5 +1,5 @@
 TEMPLATE = lib
-TARGET=coroutine
+TARGET=skuld
 DEFINES += BUILD_DW_COROUTINE
 
 ROOT_DIR=..
