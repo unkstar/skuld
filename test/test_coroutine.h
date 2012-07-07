@@ -17,6 +17,10 @@ namespace
 	void dummy() {
 	}
 
+  int foo(int i) {
+    return i;
+  }
+
 	TEST(Coroutine, Coroutine)
 	{
 		EXPECT_EQ(i, 0);
@@ -35,6 +39,7 @@ namespace
 		EXPECT_TRUE(cr.isCancelled());
 		EXPECT_FALSE(cr.promise().state());
 
-		EXPECT_TRUE(async((dummy)).promise().state());
+    Promise<> p = async((dummy)).promise();
+		EXPECT_TRUE(p.state());
 	}
 }

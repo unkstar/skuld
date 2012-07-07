@@ -36,6 +36,12 @@ class DW_COROUTINE_EXPORT CoroutineData
 	friend class Coroutine;
 	friend class CoroutineManager;
 
+  template<typename Ty_>
+    friend class CoroutineT;
+
+  template<typename Ret_>
+    friend struct ResultHelper;
+
 	public:
 		CoroutineData(const coroutine_proc_type &func);
 		~CoroutineData();

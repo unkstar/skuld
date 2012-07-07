@@ -1,4 +1,5 @@
 #include "global.h"
+#include <errno.h>
 
 Mutex::Mutex()
 {
@@ -30,16 +31,14 @@ Semaphore::~Semaphore()
 	sem_destroy(&sem_);
 }
 
-long Semaphore::release()
+void Semaphore::release()
 {
-	LONG prev = -1;
-	::ReleaseSemaphore(sem_, 1, &prev);
-	return prev;
+	sem_post(&sem_);
 }
 
 bool Semaphore::acquire()
 {
   int ret;
-  while ((ret = sem_timedwait(&sem, &ts)) == -1 && errno == EINTR);
+  while ((ret = sem_wait(&sem_)) == -1 && errno == EINTR);
   return 0 == ret;
 }

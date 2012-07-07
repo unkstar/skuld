@@ -16,6 +16,7 @@ class Deferred
 {
 	public:
 		Deferred();
+		explicit Deferred(DeferredDataPtr);
 		explicit Deferred(DeferredContextInterface *ctx);
 		Deferred(const Deferred &rhs);
 

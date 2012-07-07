@@ -10,6 +10,13 @@ Deferred<Ty_>::Deferred()
 
 //explicit
 template<typename Ty_>
+Deferred<Ty_>::Deferred(DeferredDataPtr d)
+  : DeferredBase(d)
+{
+}
+
+//explicit
+template<typename Ty_>
 Deferred<Ty_>::Deferred(DeferredContextInterface *ctx)
 	: DeferredBase(ctx)
 {

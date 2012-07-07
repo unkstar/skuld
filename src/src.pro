@@ -25,6 +25,7 @@ HEADERS += async/asio_linux.h
 SOURCES += coroutine/coroutine_posix.cpp
 SOURCES += async/async_jobpool_posix.cpp
 SOURCES += async/asio_linux.cpp
+SOURCES += misc/sync_posix.cpp
 
 #DEFINES += USE_QT_INFRASTRUCTURES
 }
