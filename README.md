@@ -79,9 +79,9 @@ void use_digst(const std::string &digest) {
 }
 ```
 Thanks to boost.bind, LOC is not bloating a lot, albeit **terrible** template parameters.
-Despite cost of redudent boost.bind every time readAsync is called, which can be eliminated by hand-written helper class,
+Despite cost of redudent boost.bind call every time readAsync is called, which can be eliminated by hand-written helper class,
 cutting function into pieces is never a good idea, especially you are dealing with a sequence of steps.
-This always gives birth to a bloat and error-prone class, which store all context needed in the sequence of workflow.
+This always gives birth to a bloat and error-prone class, which store all context needed in the sequence of workflow, and a very very complex state machine.
 
 ####[Delimited continuation][DC] is the sarvation.
 [DC]:(http://en.wikipedia.org/wiki/Delimited_continuation)
@@ -95,6 +95,18 @@ Though it's impossible to implement scheme like shift-reset with plain C++.
 It's possible to implement C# like Async/Await with [promise] and [coroutine].
 [promise]:(http://en.wikipedia.org/wiki/Futures_and_promises)
 [coroutine]:(http://en.wikipedia.org/wiki/Coroutine)
+
+version readAsync looks like:
+```cpp
+  Promise<ssize_t> readAsync(int fd, boost::shared_array<char> buffer, size_t length, off_t offset);
+```
+
+And there is another important template function called await, we'll talk about it later:
+
+```cpp
+  template<typename Ty_>
+  Promise<Ty_> await(Promise<Ty_> pro);
+```
 
 Let's see what we can do with promise and coroutine:
 
@@ -120,21 +132,21 @@ As you can see, md5Async is almost identical with original synchronous md5 funct
 except:
   1. buf is redefined as shared_array, this is required by readAsync defination
   2. await on what ```readAsync``` return, and call ```result()``` method to extract bytes_read
+To use promise-based async method, there are several ways:
+
+In case all you have to do is calculate the md5 digest:
 
 ```cpp
   //determine filename...
-  Promise<std::string> done = async((md5Async, open(filename, O_RDONLY))).promise();
+  Promise<std::string> p = async((md5Async, open(filename, O_RDONLY))).promise();
+  p.done(boost::bind(callback, p));
   //return to event loop
-  std::string digest = await(done).result();
-  //use digest
+
+  void callback(Promise<std::string> p) {
+    std::digest = p.result();
+    //print the digest
+  }
 ```
 
-Delimited version readAsync looks like:
-```cpp
-  Promise<ssize_t> readAsync(int fd, boost::shared_array<char> buffer, size_t length, off_t offset);
-```
-Another important element, template function await:
-```cpp
-  template<typename Ty_>
-  Promise<Ty_> await(Promise<Ty_> pro);
-```
+At first glance, there is no big usage difference between this version and the callback-based version.
+
