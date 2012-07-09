@@ -115,14 +115,14 @@ Promise<Ty_> await(Promise<Ty_> pro)
 
 template<typename Ret_>
 struct ResultHelper {
-  static void Helper(const boost::function<Ret_()> &func) {
+  static void Helper(boost::function<Ret_()> func) {
     Deferred<Ret_> def(GetCurrentCoroutine().d_ptr->d_ptr);
     def.resolve(func());
   }
 
   template<typename func_type>
   static Coroutine bind(const func_type &func) {
-    return Coroutine(boost::bind(&ResultHelper::Helper, boost::ref(func)));
+    return Coroutine(boost::bind(&ResultHelper::Helper, func));
   }
 };
 
