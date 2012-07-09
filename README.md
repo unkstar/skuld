@@ -101,7 +101,7 @@ version readAsync looks like:
   Promise<ssize_t> readAsync(int fd, boost::shared_array<char> buffer, size_t length, off_t offset);
 ```
 
-And there is another important template function called await, we'll talk about it later:
+And there is another important template function called await, we'll expain in detail later:
 
 ```cpp
   template<typename Ty_>
@@ -115,7 +115,7 @@ std::string md5Async(int fd) {
   boost::shared_array<char> buf(new char[BUFF_SIZE]); //1
   md5_state_t ctx;
   md5_bytes digest[16];
-  int bytes = 0;
+  ssize_t bytes = 0;
   int offset = 0;
   md5_init(&ctx);
   do {
@@ -148,5 +148,79 @@ In case all you have to do is calculate the md5 digest:
   }
 ```
 
-At first glance, there is no big usage difference between this version and the callback-based version.
+At first glance, there is no sinificant usage difference between this version and the callback-based version,
+except md5Async itself become one solid function instead of a interface function and a callback.
+Yes, doing one thing alone dosen't make async approach attractive,
+but let's consider calculate md5 of that file is just part of a lengthy process,
+we can then write every step inside that process in async style:
 
+```cpp
+void veryLengthyWork() {
+  std::string filename = getFilenameAsync();
+  int fd = openFileAsync(filename); //open a file on samba/nfs may take lots of time
+  std::string digest = md5Async(fd);
+  //etc.
+}
+```
+Then, invoke the ```veryLengthyWork``` with ```async```:
+```cpp
+  async((veryLengthyWork()));
+```
+That's it! Every step in the process is written one after another in their logical order, easy to read, easy to maintain,
+what's more important, have much better responsiveness and CPU utilization.  
+Wait, the md5Async function is not overlapped properly yet!
+we can issue another read to IO system before we spend CPU cycle in calculation!
+Let's just do it:
+```cpp
+std::string md5Async(int fd) {
+  boost::shared_array<char> reading(new char[BUFF_SIZE]), calculating(new char[BUFF_SIZE]);
+  md5_state_t ctx;
+  md5_bytes digest[16];
+  int bytes = 0;
+  ssize_t  offset = 0;
+  Promise<ssize_t> rp;
+  md5_init(&ctx);
+  bytes = await(readAsync(fd, reading, BUFF_SIZE, offset)).result();
+  do {
+    std::swap(reading, calculating);
+    offset += bytes;
+    rp = readAsync(fd, buf, BUFF_SIZE, offset);
+    if(bytes)
+      md5_append(&ctx, reading.get(), bytes);
+    bytes = await(rp).result();
+  } while(bytes);
+  md5_finish(&ctx, digest);
+  return std::string(digest, 16);
+}
+```
+Done! With another buffer and a little reordering,
+this better version can issue read request to IO system before calculating already read portion of file.
+Consider the md5AsyncCallback version, is possible to rewrite it in similar way without pain?
+```cpp
+void md5AsyncCallback(int fd, boost::function<void(const std::string&)>) {
+  buf_type reading(new char[BUFF_SIZE]);
+  buf_type calculating(new char[BUFF_SIZE]);
+  boost::shared_ptr<md5_state_t> ctx(new md5_state_t);
+  readAsync(fd, reading, BUFF_SIZE, boost::bind(continuation, ctx, calculating, callback, _1, _2, _3));
+}
+
+void continuation(boost::shared_ptr<md5_state_t> ctx,
+                  boost::function<void(const std::string&)> callback, buf_type calculating,
+                  int fd, buf_type reading, int bytes_read) {
+  if(bytes_read > 0) {
+    std::swap(reading, calculating);
+    readAsync(fd, reading, BUFF_SIZE, boost::bind(continuation, ctx, calculating, callback, _1, _2, _3));
+    md5_append(ctx.get(), reading.get());
+  } else {
+    md5_bytes digest[16]
+    md5_finish(&ctx, digest);
+    callback(std::string(digest, 16));
+  }
+}
+```
+Well...yes.
+But how about adding time out to reading process?
+Maybe user want a cancel button?
+What's worse, maybe user can click your close button and you must cancel file access and free buffer right away?
+I don't think it's easy any more.
+But, all feature describe above can be done within a *SINGLE* do..while loop, for more detail, consult examples/md5async.
