@@ -3,7 +3,7 @@
 Asynchronous callback force us to write code in [continuation passing style][CPS], which is tedious and error prone.  
 consider simple naive synchronous function below:
 
-[CPS]:(http://en.wikipedia.org/wiki/Continuation-passing_style)
+[CPS]:http://en.wikipedia.org/wiki/Continuation-passing_style
 
 ```cpp
 std::string md5(int fd) {
@@ -36,8 +36,8 @@ What's worse, it suffer from unresponsiveness and poor CPU utilization, just as 
 To improve responsiveness, asynchronous methods like [aio] / [IOCP] must be introduced.
 Assume someone kind enough already wrap all madness(signal, completion port, etc), and provide simple interface like:
 
-[aio]:(http://www.kernel.org/doc/man-pages/online/pages/man7/aio.7.html)
-[IOCP]:(http://en.wikipedia.org/wiki/Input/output_completion_port)
+[aio]:http://www.kernel.org/doc/man-pages/online/pages/man7/aio.7.html
+[IOCP]:http://en.wikipedia.org/wiki/Input/output_completion_port
 
 ```cpp
 typedef boost::shared_array<char> buf_type;
@@ -84,17 +84,17 @@ cutting function into pieces is never a good idea, especially you are dealing wi
 This always gives birth to a bloat and error-prone class, which store all context needed in the sequence of workflow, and a very very complex state machine.
 
 ####[Delimited continuation][DC] is the sarvation.
-[DC]:(http://en.wikipedia.org/wiki/Delimited_continuation)
+[DC]:http://en.wikipedia.org/wiki/Delimited_continuation
 
 Delimited continuation, also known as composable continuation, as its name implied is composable.
 With delimited continuation, callback style code can be easily rewritten in a similar form of its synchronous equivilent.
 In incoming Visual Studio 2012, C#/Visual Basic introduce new programming diagram: [Async/Await].
-[Async/Await]:(http://msdn.microsoft.com/en-us/library/hh191443%28v=vs.110%29.aspx)
+[Async/Await]:http://msdn.microsoft.com/en-us/library/hh191443%28v=vs.110%29.aspx
 
 Though it's impossible to implement scheme like shift-reset with plain C++. 
 It's possible to implement C# like Async/Await with [promise] and [coroutine].
-[promise]:(http://en.wikipedia.org/wiki/Futures_and_promises)
-[coroutine]:(http://en.wikipedia.org/wiki/Coroutine)
+[promise]:http://en.wikipedia.org/wiki/Futures_and_promises
+[coroutine]:http://en.wikipedia.org/wiki/Coroutine
 
 version readAsync looks like:
 ```cpp
