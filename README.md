@@ -224,3 +224,5 @@ Maybe user want a cancel button?
 What's worse, maybe user can click your close button and you must cancel file access and free buffer right away?
 I don't think it's easy any more.
 But, all feature describe above can be done within a *SINGLE* do..while loop, for more detail, consult examples/md5async.
+
+ok ok test
